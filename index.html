@@ -540,6 +540,42 @@ footer a {
   text-decoration: none;
 }
 
+/* Toggle buttons */
+.toggle-wrap {
+  display: inline-flex;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 3px;
+}
+
+.toggle-btn {
+  padding: 10px 28px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-dim);
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s;
+  letter-spacing: 0.1em;
+}
+
+.toggle-btn.active {
+  background: linear-gradient(135deg, var(--gold), #c49a3c);
+  color: #0a0a0f;
+  font-weight: 700;
+  box-shadow: 0 2px 10px rgba(212,168,83,0.3);
+}
+
+.toggle-btn:not(.active):hover {
+  color: var(--text);
+  background: rgba(255,255,255,0.05);
+}
+
 /* Responsive */
 @media (max-width: 700px) {
   header h1 { font-size: 1.8rem; }
@@ -560,20 +596,29 @@ footer a {
 </header>
 
 <div class="input-section">
-  <h2>輸入出生資料（民國曆）</h2>
+  <h2>輸入出生資料（中華民國國曆）</h2>
+  
+  <!-- 國曆/農曆 切換 -->
+  <div style="display:flex;justify-content:center;margin-bottom:24px;">
+    <div class="toggle-wrap">
+      <button class="toggle-btn active" id="btnSolar" onclick="switchMode('solar')">國曆</button>
+      <button class="toggle-btn" id="btnLunar" onclick="switchMode('lunar')">農曆</button>
+    </div>
+  </div>
+
   <div class="form-row">
     <div class="form-group">
       <label>民國年</label>
       <input type="number" id="year" placeholder="例：85" min="1" max="200">
     </div>
     <div class="form-group">
-      <label>月</label>
+      <label id="monthLabel">月</label>
       <select id="month">
         <option value="">選擇月份</option>
       </select>
     </div>
     <div class="form-group">
-      <label>日</label>
+      <label id="dayLabel">日</label>
       <select id="day">
         <option value="">選擇日期</option>
       </select>
@@ -585,6 +630,13 @@ footer a {
       </select>
     </div>
   </div>
+  <!-- 農曆閏月選項 -->
+  <div id="leapMonthRow" style="display:none;margin-bottom:20px;text-align:center;">
+    <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;color:var(--text-dim);font-size:0.9rem;">
+      <input type="checkbox" id="isLeapMonth" style="width:18px;height:18px;accent-color:var(--gold);cursor:pointer;">
+      此月份為閏月
+    </label>
+  </div>
   <button class="btn-calc" onclick="calculate()">排 盤 分 析</button>
 </div>
 
@@ -592,7 +644,7 @@ footer a {
   <!-- Bazi Pillars -->
   <div class="section-title">四柱八字</div>
   <div id="lunarDateDisplay" style="text-align:center;margin-bottom:20px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;">
-    <span style="color:var(--text-dim);font-size:0.85rem;letter-spacing:0.1em;">農曆日期</span>
+    <span style="color:var(--text-dim);font-size:0.85rem;letter-spacing:0.1em;">國曆 / 農曆 日期對照</span>
     <div id="lunarDateText" style="font-family:'Noto Serif TC',serif;font-size:1.15rem;font-weight:600;color:var(--gold);margin-top:6px;"></div>
   </div>
   <div class="bazi-pillars" id="pillars"></div>
@@ -709,6 +761,10 @@ const SHICHEN = [
 ];
 
 // ===== INIT FORM =====
+let currentMode = 'solar'; // 'solar' or 'lunar'
+
+const LUNAR_MONTH_LABELS = ['','正月','二月','三月','四月','五月','六月','七月','八月','九月','十月','冬月','臘月'];
+
 function initForm() {
   const monthSel = document.getElementById('month');
   for (let i = 1; i <= 12; i++) {
@@ -733,6 +789,64 @@ function initForm() {
     opt.textContent = `${s.name}（${s.range}）`;
     hourSel.appendChild(opt);
   });
+}
+
+function switchMode(mode) {
+  currentMode = mode;
+  const btnSolar = document.getElementById('btnSolar');
+  const btnLunar = document.getElementById('btnLunar');
+  const h2 = document.querySelector('.input-section h2');
+  const monthLabel = document.getElementById('monthLabel');
+  const dayLabel = document.getElementById('dayLabel');
+  const leapRow = document.getElementById('leapMonthRow');
+  const monthSel = document.getElementById('month');
+  const daySel = document.getElementById('day');
+
+  if (mode === 'solar') {
+    btnSolar.classList.add('active');
+    btnLunar.classList.remove('active');
+    h2.textContent = '輸入出生資料（中華民國國曆）';
+    monthLabel.textContent = '月';
+    dayLabel.textContent = '日';
+    leapRow.style.display = 'none';
+  } else {
+    btnLunar.classList.add('active');
+    btnSolar.classList.remove('active');
+    h2.textContent = '輸入出生資料（農曆）';
+    monthLabel.textContent = '農曆月';
+    dayLabel.textContent = '農曆日';
+    leapRow.style.display = 'block';
+  }
+
+  // 更新月份選單文字
+  const monthOpts = monthSel.querySelectorAll('option');
+  monthOpts.forEach((opt, idx) => {
+    if (idx === 0) {
+      opt.textContent = mode === 'lunar' ? '選擇月份' : '選擇月份';
+      return;
+    }
+    if (mode === 'lunar') {
+      opt.textContent = LUNAR_MONTH_LABELS[idx];
+    } else {
+      opt.textContent = idx + ' 月';
+    }
+  });
+
+  // 更新日期選單（農曆最多30天）
+  const maxDay = mode === 'lunar' ? 30 : 31;
+  const currentDay = parseInt(daySel.value);
+  daySel.innerHTML = '<option value="">選擇日期</option>';
+  for (let i = 1; i <= maxDay; i++) {
+    const opt = document.createElement('option');
+    opt.value = i;
+    if (mode === 'lunar') {
+      opt.textContent = LUNAR_DAY_CN[i];
+    } else {
+      opt.textContent = i + ' 日';
+    }
+    daySel.appendChild(opt);
+  }
+  if (currentDay && currentDay <= maxDay) daySel.value = currentDay;
 }
 
 // ===== LUNAR CALENDAR (農曆) =====
@@ -799,6 +913,49 @@ function formatLunar(lunar) {
   if (!lunar) return '無法轉換';
   const leapStr = lunar.isLeap ? '閏' : '';
   return `農曆${lunar.year}年 ${leapStr}${LUNAR_MONTH_CN[lunar.month]}月${LUNAR_DAY_CN[lunar.day]}`;
+}
+
+// 農曆轉公曆
+function lunar2solar(lunarYear, lunarMonth, lunarDay, isLeapMonth) {
+  if (lunarYear < 1900 || lunarYear > 2100) return null;
+  
+  // 計算從 1900/1/31 (農曆1900年正月初一) 到目標農曆日期的天數
+  let offset = 0;
+  
+  // 累加整年天數
+  for (let y = 1900; y < lunarYear; y++) {
+    offset += lunarYearDays(y);
+  }
+  
+  // 累加目標年內的月份天數
+  const leap = lunarLeapMonth(lunarYear);
+  
+  for (let m = 1; m < lunarMonth; m++) {
+    offset += lunarMonthDays(lunarYear, m);
+    // 如果該月有閏月，也要加上閏月天數
+    if (m === leap) {
+      offset += lunarLeapDays(lunarYear);
+    }
+  }
+  
+  // 如果目標月份就是閏月
+  if (isLeapMonth && leap === lunarMonth) {
+    // 先加上正常月的天數，再從閏月算日期
+    offset += lunarMonthDays(lunarYear, lunarMonth);
+  }
+  
+  // 加上日
+  offset += lunarDay - 1;
+  
+  // 從 1900/1/31 開始加天數
+  const base = Date.UTC(1900, 0, 31);
+  const targetDate = new Date(base + offset * 86400000);
+  
+  return {
+    year: targetDate.getUTCFullYear(),
+    month: targetDate.getUTCMonth() + 1,
+    day: targetDate.getUTCDate()
+  };
 }
 
 // ===== BAZI CALCULATION =====
@@ -904,20 +1061,46 @@ function calculate() {
     return;
   }
 
-  const solarYear = rocYear + 1911;
+  let solarYear, solarMonth, solarDay;
+  let lunarDate;
 
-  // Validate date
-  const testDate = new Date(solarYear, month - 1, day);
-  if (testDate.getMonth() !== month - 1 || testDate.getDate() !== day) {
-    alert('日期不正確，請檢查');
-    return;
+  if (currentMode === 'lunar') {
+    // 農曆輸入：年份是民國年，月日是農曆
+    const lunarYear = rocYear + 1911;
+    const isLeap = document.getElementById('isLeapMonth').checked;
+    
+    // 農曆轉公曆
+    const solar = lunar2solar(lunarYear, month, day, isLeap);
+    if (!solar) {
+      alert('農曆日期無法轉換，請檢查輸入是否正確');
+      return;
+    }
+    solarYear = solar.year;
+    solarMonth = solar.month;
+    solarDay = solar.day;
+    lunarDate = { year: lunarYear, month: month, day: day, isLeap: isLeap };
+  } else {
+    // 國曆輸入
+    solarYear = rocYear + 1911;
+    solarMonth = month;
+    solarDay = day;
+
+    // Validate date
+    const testDate = new Date(solarYear, solarMonth - 1, solarDay);
+    if (testDate.getMonth() !== solarMonth - 1 || testDate.getDate() !== solarDay) {
+      alert('日期不正確，請檢查');
+      return;
+    }
+
+    // Calculate lunar date
+    lunarDate = solar2lunar(solarYear, solarMonth, solarDay);
   }
 
   // Get effective year (before 立春 = previous year)
-  const effYear = getEffectiveYear(solarYear, month, day);
+  const effYear = getEffectiveYear(solarYear, solarMonth, solarDay);
 
   // Get lunar month (based on 節氣)
-  const lunarMonth = getSolarMonth(month, day);
+  const lunarMonth = getSolarMonth(solarMonth, solarDay);
 
   // Year pillar
   const yearGZ = getYearGanZhi(effYear);
@@ -926,7 +1109,7 @@ function calculate() {
   const monthGZ = getMonthGanZhi(yearGZ.gan, lunarMonth);
 
   // Day pillar
-  const dayGZ = getDayGanZhi(solarYear, month, day);
+  const dayGZ = getDayGanZhi(solarYear, solarMonth, solarDay);
 
   // Hour pillar
   const hourGZ = getHourGanZhi(dayGZ.gan, hourIdx);
@@ -939,10 +1122,7 @@ function calculate() {
     { label: '年柱', gan: yearGZ.gan, zhi: yearGZ.zhi }
   ];
 
-  // Calculate lunar date
-  const lunarDate = solar2lunar(solarYear, month, day);
-
-  renderResults(pillars, lunarDate, solarYear, month, day);
+  renderResults(pillars, lunarDate, solarYear, solarMonth, solarDay);
 }
 
 
@@ -953,8 +1133,9 @@ function renderResults(pillars, lunarDate, solarYear, solarMonth, solarDay) {
   // Show lunar date
   const lunarText = formatLunar(lunarDate);
   const rocYear = solarYear - 1911;
-  document.getElementById('lunarDateText').textContent = 
-    `西曆 ${solarYear}年${solarMonth}月${solarDay}日（民國${rocYear}年）→ ${lunarText}`;
+  document.getElementById('lunarDateText').innerHTML = 
+    `<div>國曆 ${solarYear}年${solarMonth}月${solarDay}日（民國${rocYear}年）</div>
+     <div style="margin-top:4px">${lunarText}</div>`;
 
   // Scroll to results
   setTimeout(() => {
